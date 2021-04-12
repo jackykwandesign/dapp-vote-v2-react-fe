@@ -1,12 +1,14 @@
+import { MetaMaskProvider } from 'metamask-react';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <MetaMaskProvider>
+      <App />
+    </MetaMaskProvider>
   </React.StrictMode>,
   document.getElementById('root')
 );
