@@ -3,6 +3,7 @@
 
 import { ConvertLibContract } from "./ConvertLib";
 import { ElectionContract } from "./Election";
+import { ElectionV2Contract } from "./ElectionV2";
 import { MetaCoinContract } from "./MetaCoin";
 import { MigrationsContract } from "./Migrations";
 
@@ -11,6 +12,7 @@ declare global {
     interface Artifacts {
       require(name: "ConvertLib"): ConvertLibContract;
       require(name: "Election"): ElectionContract;
+      require(name: "ElectionV2"): ElectionV2Contract;
       require(name: "MetaCoin"): MetaCoinContract;
       require(name: "Migrations"): MigrationsContract;
     }
@@ -19,5 +21,6 @@ declare global {
 
 export { ConvertLibContract, ConvertLibInstance } from "./ConvertLib";
 export { ElectionContract, ElectionInstance } from "./Election";
+export { ElectionV2Contract, ElectionV2Instance } from "./ElectionV2";
 export { MetaCoinContract, MetaCoinInstance } from "./MetaCoin";
 export { MigrationsContract, MigrationsInstance } from "./Migrations";
