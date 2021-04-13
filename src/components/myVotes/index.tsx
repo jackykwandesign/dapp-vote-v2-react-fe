@@ -52,6 +52,7 @@ export interface VoteTicket{
 const MyContractVotes = () =>{
     const { account } = useMetaMask();
     const [electionInstance, setElectionInstance] = useState<ElectionV2Instance>()
+    const [loading, setLoading] = useState<boolean>(true)
     const [myContractVotes, setMyContractVotes] = useState<Vote[]>([])
     // const [selectedCandidate, setSelectedCandidate] = useState<Candidate>()
 
@@ -68,6 +69,7 @@ const MyContractVotes = () =>{
     }
 
     const InitMyContractVoteList = async (instance:ElectionV2Instance, account:string) =>{
+        
         const counts =  await instance.contractVoteCounts()
         console.log("counts",counts.toNumber())
 
@@ -86,6 +88,7 @@ const MyContractVotes = () =>{
         }
         // console.log("newMyContractVotes",newMyContractVotes)
         setMyContractVotes(newMyContractVotes)
+        setLoading(false)
     }
 
     useEffect(()=>{
@@ -99,8 +102,18 @@ const MyContractVotes = () =>{
         }
     },[electionInstance,account])
 
+    if(loading){
+        return <div>Loading ...</div>
+    }
+
+    if(myContractVotes.length === 0){
+        return <div>
+            <p>You havn't organize any vote yet.</p>
+        </div>
+    }
     return (
         <div>
+            <br />
             <table>
                 <tr>
                     <th>VoteID</th>
@@ -108,17 +121,19 @@ const MyContractVotes = () =>{
                     <th>Organizer Name</th>
                     <th>Total Votes</th>
                     <th>Vote Options</th>
+                    <th>Status</th>
                     <th>Go to vote page</th>
                 </tr>
             {
                 myContractVotes.map((c,i)=>{
                     return(
-                        <tr>
+                        <tr key={i}>
                             <td>{Number(c.id)}</td>
                             <td>{c.name}</td>
                             <td>{c.organizerName}</td>
                             <td>{Number(c.totalVoteCount)}</td>
                             <td>{c.voteOptions.map((v, vi)=>{return `${v.name}${(vi + 1) < c.voteOptionCount ? "," : ""}`})}</td>
+                            <td>{c.voteEnd ? "End" : "Voting"}</td>
                             <td><Link to={`/voteDetail/${c.id}`}>Go to Detail Page</Link></td>
                         {/* <li >
                             #VoteID: {Number(c.id)} - {c.name}

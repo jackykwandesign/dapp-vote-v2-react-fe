@@ -14,8 +14,9 @@ import VoteDetail from './components/voteDetail';
 function App() {
   return (
     <div className="App">
-      <Header />
+      
       <Router>
+        <Header />
         <Switch>
           <Route path="/myContractVotes">
               <MyContractVotes />
