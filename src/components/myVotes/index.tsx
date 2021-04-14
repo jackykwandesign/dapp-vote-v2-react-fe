@@ -2,6 +2,7 @@ import { useMetaMask } from 'metamask-react';
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom';
 import Web3 from 'web3';
+import { blockchainConfig } from '../../config/blockchain';
 // var contract = require('truffle-contract')
 
 import ElectionV2JSON from '../../contract/ElectionV2.json'
@@ -57,15 +58,17 @@ const MyContractVotes = () =>{
     // const [selectedCandidate, setSelectedCandidate] = useState<Candidate>()
 
     const InitContract = async() =>{
-        const provider  = new Web3.providers.HttpProvider('http://localhost:7545');
+        const provider  = new Web3.providers.HttpProvider(blockchainConfig.rpcURL);
         // console.log("ElectionJSON",ElectionJSON)
         const MyContract = await contract(ElectionV2JSON) 
         await MyContract.setProvider(provider)
         const MyContractWithProvider = MyContract as ElectionV2Contract
-        const instance = await MyContractWithProvider.deployed();
-        setElectionInstance(instance)
-        // console.log("instance",instance)
-        // console.log("candidate1",candidate1)
+        try {
+            const instance = await MyContractWithProvider.deployed();
+            setElectionInstance(instance)
+        } catch (error) {
+            alert('Contract not deployed.')
+        }
     }
 
     const InitMyContractVoteList = async (instance:ElectionV2Instance, account:string) =>{

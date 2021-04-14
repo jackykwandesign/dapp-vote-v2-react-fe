@@ -2,6 +2,7 @@ import { useMetaMask } from 'metamask-react';
 import { MetaMaskState } from 'metamask-react/lib/metamask-context';
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom';
+import { blockchainConfig } from '../../config/blockchain';
 import logo from './logo.svg';
 
 
@@ -29,7 +30,9 @@ const MetamaskContainer = () =>{
 const Header = () =>{
     return (
         <header className="App-header">
+            <p>Network: {blockchainConfig.name}: {blockchainConfig.rpcURL}</p>
             <MetamaskContainer />
+            <br />
             <Link to="/myContractVotes" style={{marginRight:100}}>My Organized Voting</Link>
             <Link to="/organizeNewVote">Organize New Voting</Link>
         </header>

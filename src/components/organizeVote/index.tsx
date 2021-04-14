@@ -2,6 +2,7 @@ import { useMetaMask } from 'metamask-react';
 import React, { MouseEventHandler, SyntheticEvent, useEffect, useState } from 'react'
 import { useForm } from "react-hook-form";
 import Web3 from 'web3';
+import { blockchainConfig } from '../../config/blockchain';
 import ElectionV2JSON from '../../contract/ElectionV2.json'
 import { ElectionV2Contract, ElectionV2Instance } from '../../truffle-contracts';
 var contract = require("@truffle/contract");
@@ -17,13 +18,17 @@ const OrganizeNewVote = () =>{
 
 
     const InitContract = async() =>{
-        const provider  = new Web3.providers.HttpProvider('http://localhost:7545');
+        const provider  = new Web3.providers.HttpProvider(blockchainConfig.rpcURL);
         // console.log("ElectionJSON",ElectionJSON)
         const MyContract = await contract(ElectionV2JSON) 
         await MyContract.setProvider(provider)
         const MyContractWithProvider = MyContract as ElectionV2Contract
-        const instance = await MyContractWithProvider.deployed();
-        setElectionInstance(instance)
+        try {
+            const instance = await MyContractWithProvider.deployed();
+            setElectionInstance(instance)
+        } catch (error) {
+            alert('Contract not deployed.')
+        }
     }
 
     const InitKey = () =>{
@@ -55,7 +60,7 @@ const OrganizeNewVote = () =>{
         const result = window.confirm('Do you really want to setup this vote ?')
         if(result){
             try {
-                const receipt = await electionInstance.addVote(value.name,value.organizerName,publicKey, [],{from:account})
+                const receipt = await electionInstance.addVote(value.name,value.organizerName,publicKey, voteOptions,{from:account})
                 console.log("receipt",receipt)  
             } catch (error) {
                 alert(`Error! ${error.reason}`)
