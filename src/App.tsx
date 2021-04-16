@@ -18,6 +18,7 @@ function App() {
       
       <Router>
         <Header />
+        <br/>
         <Switch>
           <Route path="/myContractVotes">
               <MyContractVotes />

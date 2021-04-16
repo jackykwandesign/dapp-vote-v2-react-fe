@@ -3,16 +3,20 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom';
 import Web3 from 'web3';
 import { blockchainConfig } from '../../config/blockchain';
+
 // var contract = require('truffle-contract')
 
 import ElectionV2JSON from '../../contract/ElectionV2.json'
 import { ElectionV2Contract, ElectionV2Instance } from '../../truffle-contracts';
 import { Vote, VoteOption, VoteTicket } from '../myVotes';
-
+import { CSVLink, CSVDownload } from "react-csv"
 import "./index.css"
 const NodeRSA = require('node-rsa');
 var contract = require("@truffle/contract");
 var QRCode = require('qrcode.react');
+// var CsvDownload = require('react-json-to-csv')
+// import * as CsvDownload from 'react-json-to-csv'
+
 
 const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
     const voteID = props.match.params.voteID
@@ -159,7 +163,7 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
             let draw = false
             // scan draw
             ticketCount.map((t, ti)=>{
-                if(t === maxVotes){
+                if(t === maxVotes && ti !== maxID){
                     // console.log("draw")
                     draw = true
                 }
@@ -213,162 +217,227 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
             <Link to="/myContractVotes"><button>Go to my votes</button></Link>
         </div>
     }
-    return (
-        <div>
-            <h2>VoteID #{voteID} Detail in blockchain</h2>
-            <p>Vote Name: {voteDetail.name}</p>
-            <p>Organizer Name:{voteDetail.organizerName}</p>
-            <p>Organizer Address: {voteDetail.organizerAddress}</p>
-            <p>Allow Vote: {voteDetail.voteEnd ? "Expired" : "Allow"}</p>
-            <p>Public Key: </p><QRCode value={voteDetail.publicKey} />
-            <p>{voteDetail.publicKey}</p>
-            <p>Total Vote Options: {Number(voteDetail.voteOptionCount)}</p>
-            <p> Vote Options: </p>
-            <ol>
-                {
-                    voteDetail.voteOptions.map((o,i)=>{
-                        return(
-                            <li key={i}>{o.name}</li>
-                        )
-                    })
-                }
-            </ol>
-            <p>Total Voted Ticket: {Number(voteDetail.totalVoteCount)}</p>
 
-            {
-                voteDetail.organizerAddress.toUpperCase() === account.toUpperCase() ?
-                <>
-                {/* // check all ticket */}
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Ticket ID</th>
-                                <th>Encrypted Ballot</th>
-                                <th>Signature</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {
-                                voteDetail.voteTickets.map((t,ti)=>{
-                                    return(
-                                        <tr>
-                                            <td>{Number(t.id)}</td>
-                                            <td>{t.encryptedBallot}</td>
-                                            <td>{t.signature}</td>
-                                        </tr>
-                                    )
-                                })
-                            }
-                        </tbody>
-                    </table>
-                    <br />
-                    <button>Download CSV</button>
-
+    const VotingDetail = () =>{
+        return(
+            <div style={{borderStyle:"solid"}}>
+                <div style={{margin:20}}>
+                <h2>VoteID #{voteID} Detail in blockchain</h2>
+                <p>Vote Name: {voteDetail.name}</p>
+                <p>Organizer Name:{voteDetail.organizerName}</p>
+                <p>Organizer Address: {voteDetail.organizerAddress}</p>
+                <p>Allow Vote: {voteDetail.voteEnd ? "Expired" : "Allow"}</p>
+                <p>Public Key: </p><QRCode value={voteDetail.publicKey} />
+                <p>{voteDetail.publicKey}</p>
+                <p>Total Vote Options: {Number(voteDetail.voteOptionCount)}</p>
+                <p> Vote Options: </p>
+                <ol>
                     {
-                        voteDetail.voteEnd ? 
-
-                        <>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Option ID</th>
-                                        <th>Option Name</th>
-                                        <th>Option Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                {
-                                    voteDetail.voteOptions.map((r, i)=>{
-                                        return(
-                                            <tr key={i}>
-                                                <td>{Number(r.id)}</td>
-                                                <td>{r.name}</td>
-                                                <td>{Number(voteDetail.voteResults[i])}</td>
-                                            </tr>
-                                        )
-                                    })
-                                }  
-                                </tbody>
-
-                            </table>
-                        </>
-                        :
-                            <>
-                            <h2>To end the vote, paste your private key in here or upload your result if you need to verify the signature</h2>
-                            <textarea rows={20} cols={100} placeholder={"please paste your private key here"} onChange={e=>setPrivateKey(e.currentTarget.value)}/>
-                            <br />
-                            <button onClick={()=>VerifyPrivateKey()}>Verify Private Key</button>
-                            <button onClick={()=>EndVoteByPrivateKey()}>End Vote with Private Key</button>
-                        </>
+                        voteDetail.voteOptions.map((o,i)=>{
+                            return(
+                                <li key={i}>{o.name}</li>
+                            )
+                        })
                     }
+                </ol>
+                <p>Total Voted Ticket: {Number(voteDetail.totalVoteCount)}</p>
+                </div>
+            </div>
+        )
+    }
 
-                </>
-                :
-                <>
-                    <h2 className="happy">Step 1. Please choose your vote options</h2>
-                    <select
-                        onChange={e=>HandleSelectOption(e)}
-                        value={selectedOption?.id}
-                        defaultValue={-1}
-                    >
-                        <option disabled value={-1}> -- select an option -- </option>
+    const VoteTicketList = () =>{
+        return(
+            <div>
+                <h2>Vote Tickets
+                    (
+                        <CSVLink 
+                            data={ voteDetail.voteTickets}
+                            filename={`vote_${voteID}_tickets.csv`}
+                            // headers = {
+                            //     [
+                            //         { label: 'id', key: 'id' },
+                            //         { label: 'encryptedBallot', key: 'encryptedBallot' },
+                            //         { label: 'signature', key: 'signature' },
+                            //     ]
+                            // }
+                        >
+                            Download CSV
+                        </CSVLink>
+                    )
+                </h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ticket ID</th>
+                            <th>Encrypted Ballot</th>
+                            <th>Signature</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         {
-                            voteDetail.voteOptions.map((v, vi) =>{
+                            voteDetail.voteTickets.map((t,ti)=>{
                                 return(
-                                    <option 
-                                        value={Number(v.id)}
-                                        key={Number(v.id)}
-                                    
-                                    >
-                                        {v.name}
-                                    </option>
+                                    <tr key={ti}>
+                                        <td>{Number(t.id)}</td>
+                                        <td>{t.encryptedBallot}</td>
+                                        <td>{t.signature}</td>
+                                    </tr>
                                 )
                             })
                         }
-                    </select>
+                    </tbody>
+                </table>
+                <br />
+                
+            </div>
+        )
+    }
 
-                    {
-                        selectedOption !== undefined &&
-                        <>
-                            <br />
-                            <h2>Step 2. (optioinal) Verify the Encrypted Ballot</h2>
-                            <p>Encrypted Ballot</p><QRCode value={encryptedBallot} />
-                            <p>{encryptedBallot}</p>
-                            <p>To verify the ballot is case as intented</p>
-                            <p>1. Go to verify tap in your mobile</p>
-                            <p>2. Scan the public key</p>
-                            <p>3. Input your optionID, e.g. Number next to options</p>
-                            <p>4. Scan the Encrypted Ballot</p>
-                            <p>5. If OK pop up, you case as intented, else the voting website is cheating!</p>
-                        </>
-                    }
-
-                    {
-                        selectedOption !== undefined &&
-                        <>
-                            <br />
-                            <h2>Step 3. Sign Vote with DAA credential</h2>
-                            <textarea rows={4} cols={100} placeholder={"please paste your signature here, make sure signature is correct, else this vote will be ignored"} onChange={e=>setSignature(e.currentTarget.value)}/>
-                            {/* <h2>Step 3. Case the Vote to blockchain</h2> */}
-                            {/* <button disabled={selectedOption === undefined} onClick={()=>CaseVote()}>Vote</button> */}
-                        </>
-                    }
-
-                    {
-                        selectedOption && signature &&
-                        <>
-                            <br />
-                            <h2>Step 4. Please verify the Encrypted Ballot and signature if need</h2>
-                            <p>Encrypted Ballot: {encryptedBallot}</p>
-                            <p>Signature: {signature}</p>
-                            {/* <h2>Step 3. Case the Vote to blockchain</h2> */}
-                            <button disabled={selectedOption === undefined} onClick={()=>CaseVote()}>Case the Vote</button>
-                        </>
-                    }
-                    
-                </>
+    const VoteResultList = () =>{
+        let maxID = 0;
+        let maxCount = 0
+        voteDetail.voteResults.map((vr, vi)=>{
+            if(vr > maxCount){
+                maxCount = vr
+                maxID = vi
             }
-        </div>
-    )
+        })
+        return(
+            <div>
+                <h2>Vote Result</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Option ID</th>
+                            <th>Option Name</th>
+                            <th>Option Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {
+                        voteDetail.voteOptions.map((r, i)=>{
+
+                            return(
+                                <tr key={i} style={{backgroundColor: i === maxID ? "yellow" : "transparent"}}>
+                                    <td>{Number(r.id)}</td>
+                                    <td>{r.name}</td>
+                                    <td>{Number(voteDetail.voteResults[i])}</td>
+                                </tr>
+                            )
+                        })
+                    }  
+                    </tbody>
+                </table>
+            </div>
+        )
+    }
+
+    
+    if(voteDetail.organizerAddress.toUpperCase() === account.toUpperCase()){
+        // is Organizer
+        return(
+            <div>
+                <VotingDetail />
+                <br/>
+                <VoteTicketList />
+                <br/>
+                {
+                    voteDetail.voteEnd ? <VoteResultList /> :
+
+                    <>
+                        <h2>To end the vote, paste your private key in here or upload your result if you need to verify the signature</h2>
+                        <textarea rows={20} cols={100} placeholder={"please paste your private key here"} onChange={e=>setPrivateKey(e.currentTarget.value)}/>
+                        <br />
+                        <button onClick={()=>VerifyPrivateKey()}>Verify Private Key</button>
+                        <button onClick={()=>EndVoteByPrivateKey()}>End Vote with Private Key</button>
+                    </>
+                }
+            </div>
+        )
+    }else{
+        return (
+            <div>
+                <VotingDetail />
+                <br/>
+                {
+                    voteDetail.voteEnd ?
+                    <VoteResultList />
+                    :
+                    <div>
+                        <div style={{borderStyle:"solid"}}>
+                            <div style={{margin:20}}>
+                            <h2 >Step 1. Please choose your vote options</h2>
+                            <select
+                                onChange={e=>HandleSelectOption(e)}
+                                value={selectedOption?.id}
+                                defaultValue={-1}
+                            >
+                                <option disabled value={-1}> -- select an option -- </option>
+                                {
+                                    voteDetail.voteOptions.map((v, vi) =>{
+                                        return(
+                                            <option 
+                                                value={Number(v.id)}
+                                                key={Number(v.id)}
+                                            
+                                            >
+                                                {v.name}
+                                            </option>
+                                        )
+                                    })
+                                }
+                            </select>
+                            </div>
+                        </div>
+
+                        <br />
+
+
+                        {
+                            selectedOption !== undefined &&
+                            <div style={{borderStyle:"solid"}}>
+                                <div style={{margin:20}}>
+                                    <h2>Step 2. (optioinal) Verify the Encrypted Ballot</h2>
+                                    <p>Encrypted Ballot</p><QRCode value={encryptedBallot} />
+                                    <p>{encryptedBallot}</p>
+                                    <p>To verify the ballot is case as intented</p>
+                                    <p>1. Go to verify tap in your mobile</p>
+                                    <p>2. Scan the public key</p>
+                                    <p>3. Input your optionID, e.g. Number next to options</p>
+                                    <p>4. Scan the Encrypted Ballot</p>
+                                    <p>5. If OK pop up, you case as intented, else the voting website is cheating!</p>
+                                </div>
+                            </div>
+                        }
+                        <br />
+                        {
+                            selectedOption !== undefined &&
+                            <div style={{borderStyle:"solid"}}>
+                                <div style={{margin:20}}>
+                                    <h2>Step 3. Sign Vote with DAA credential</h2>
+                                    <textarea rows={4} cols={100} placeholder={"please paste your signature here, make sure signature is correct, else this vote will be ignored"} onChange={e=>setSignature(e.currentTarget.value)}/>
+                                </div>
+                            </div>
+                        }
+                        <br />
+                        {
+                            selectedOption && signature &&
+                            <div style={{borderStyle:"solid"}}>
+                                <div style={{margin:20}}>
+                                    <h2>Step 4. Please verify the Encrypted Ballot and signature if need</h2>
+                                    <p>Encrypted Ballot: {encryptedBallot}</p>
+                                    <p>Signature: {signature}</p>
+                                    {/* <h2>Step 3. Case the Vote to blockchain</h2> */}
+                                    <button disabled={selectedOption === undefined} onClick={()=>CaseVote()}>Case the Vote</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        )
+    }
+
 }
 export default VoteDetail

@@ -29,12 +29,16 @@ const MetamaskContainer = () =>{
 
 const Header = () =>{
     return (
-        <header className="App-header">
+        <header className="App-header" style={{borderStyle:"solid"}}>
+            <div style={{margin:20}}>
             <p>Network: {blockchainConfig.name}: {blockchainConfig.rpcURL}</p>
             <MetamaskContainer />
             <br />
             <Link to="/myContractVotes" style={{marginRight:100}}>My Organized Voting</Link>
-            <Link to="/organizeNewVote">Organize New Voting</Link>
+            <Link to="/organizeNewVote" style={{marginRight:100}}>Organize New Voting</Link>
+            <Link to="/voteDetail">Vote Detail</Link>
+            </div>
+
         </header>
     )
 }
