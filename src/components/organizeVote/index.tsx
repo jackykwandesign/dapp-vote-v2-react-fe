@@ -1,6 +1,7 @@
 import { useMetaMask } from 'metamask-react';
 import React, { MouseEventHandler, SyntheticEvent, useEffect, useState } from 'react'
 import { useForm } from "react-hook-form";
+import { Link } from 'react-router-dom';
 import Web3 from 'web3';
 import { blockchainConfig } from '../../config/blockchain';
 import ElectionV2JSON from '../../contract/ElectionV2.json'
@@ -15,8 +16,8 @@ const OrganizeNewVote = () =>{
     const [publicKey, setPublicKey] = useState<string>()
     const [privateKey, setPrivateKey] = useState<string>()
     const [voteOptions, setVoteOptions] = useState<string[]>([])
-
-
+    const [voteCompleted, setVoteCompleted] = useState<boolean>(false)
+    const [receipt, setReceipt] = useState<Truffle.TransactionResponse<never>>()
     const InitContract = async() =>{
         const provider  = new Web3.providers.HttpProvider(blockchainConfig.rpcURL);
         // console.log("ElectionJSON",ElectionJSON)
@@ -60,9 +61,12 @@ const OrganizeNewVote = () =>{
         const result = window.confirm('Do you really want to setup this vote ?')
         if(result){
             try {
-                const receipt = await electionInstance.addVote(value.name,value.organizerName,publicKey, voteOptions,{from:account})
+                const receipt = await electionInstance.addVote(value.name,value.organizerName,publicKey, voteOptions,{from:account,gas:5504890,gasPrice:1200000})
                 console.log("receipt",receipt)  
+                setReceipt(receipt)
+                setVoteCompleted(true)
             } catch (error) {
+                console.error("error", error)
                 alert(`Error! ${error.reason}`)
             }
         }
@@ -97,6 +101,19 @@ const OrganizeNewVote = () =>{
     // voteOptionCount: number
     // totalVoteCount: number
     // voteEnd: boolean
+
+    if(voteCompleted){
+        let voteName = watch('name') as string
+        return <div>
+        <p>You organize the vote {voteName} successfully.</p>
+            <p>TxID: {receipt?.tx}</p>
+            <p>Contract Address: {receipt?.receipt.to}</p>
+            <p>Gas used: {receipt?.receipt.gasUsed}</p>
+            <p>Eth used: {receipt?.receipt.gasUsed * blockchainConfig.gasPrice * 0.000000001} ETH</p>
+            <Link to="/myContractVotes"><button>Go to my votes</button></Link>
+
+        </div>
+    }
     return(
         <div>
             <form onSubmit={handleSubmit(onSubmit)}>

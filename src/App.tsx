@@ -11,6 +11,7 @@ import {
 import MyContractVotes from './components/myVotes';
 import OrganizeNewVote from './components/organizeVote';
 import VoteDetail from './components/voteDetail';
+import VerifyVote from './components/verifyVote';
 function App() {
   return (
     <div className="App">
@@ -27,6 +28,10 @@ function App() {
           <Route exact path="/voteDetail/:voteID" 
             component={VoteDetail}>
           </Route>
+          <Route path="/verifyVote">
+            <VerifyVote />
+          </Route>
+
           {/* <Route path="/voteDetail/:voteID">
               <VoteDetail />
           </Route> */}

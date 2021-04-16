@@ -39,7 +39,7 @@ export interface ElectionV2Instance extends Truffle.ContractInstance {
       _publicKey: string,
       _options: string[],
       txDetails?: Truffle.TransactionDetails
-    ): Promise<void>;
+    ): Promise<BN>;
     sendTransaction(
       _name: string,
       _organizerName: string,
@@ -155,7 +155,7 @@ export interface ElectionV2Instance extends Truffle.ContractInstance {
         _publicKey: string,
         _options: string[],
         txDetails?: Truffle.TransactionDetails
-      ): Promise<void>;
+      ): Promise<BN>;
       sendTransaction(
         _name: string,
         _organizerName: string,

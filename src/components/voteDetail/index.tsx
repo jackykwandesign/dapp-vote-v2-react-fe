@@ -24,7 +24,7 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
     const [privateKey, setPrivateKey] = useState<string>("")
     const [encryptedBallot, setEncryptedBallot] = useState<string>("")
     const [voted, setVoted] = useState<boolean>(false)
-    const [txID, setTxID] = useState<string>("")
+    const [receipt, setReceipt] = useState<Truffle.TransactionResponse<never>>()
     // const [selectedCandidate, setSelectedCandidate] = useState<Candidate>()
 
     const InitContract = async() =>{
@@ -93,7 +93,7 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
                 console.log("receipt",receipt)
                 await InitVoteDetail(electionInstance, account)
                 // alert(`You have vote #${selectedOption.id} - ${selectedOption.name}`)
-                setTxID(receipt.tx)
+                setReceipt(receipt)
                 setVoted(true)
             }
         } catch (error) {
@@ -206,7 +206,11 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
     if(voted){
         return <div>
             <p>Thanks for your vote, you can close the website now</p>
-            <p>TxID: {txID}</p>
+            <p>TxID: {receipt?.tx}</p>
+            <p>Contract Address: {receipt?.receipt.to}</p>
+            <p>Gas used: {receipt?.receipt.gasUsed}</p>
+            <p>Eth used: {receipt?.receipt.gasUsed * blockchainConfig.gasPrice * 0.000000001} ETH</p>
+            <Link to="/myContractVotes"><button>Go to my votes</button></Link>
         </div>
     }
     return (
@@ -301,7 +305,7 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
                 </>
                 :
                 <>
-                    <h2>Step 1. Please choose your vote options</h2>
+                    <h2 className="happy">Step 1. Please choose your vote options</h2>
                     <select
                         onChange={e=>HandleSelectOption(e)}
                         value={selectedOption?.id}
