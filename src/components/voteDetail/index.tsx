@@ -93,6 +93,7 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
     const [privateKey, setPrivateKey] = useState<string>("")
     const [encryptedBallot, setEncryptedBallot] = useState<string>("")
     const [benalohChallengeNonce, setBenalohChallengeNonce] = useState<string>("")
+    const [isChallengeCheating, setIsChallengeCheating] = useState<boolean>(false)
     const [voted, setVoted] = useState<boolean>(false)
     const [receipt, setReceipt] = useState<Truffle.TransactionResponse<never>>()
     // const [selectedCandidate, setSelectedCandidate] = useState<Candidate>()
@@ -158,6 +159,14 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
         const { nonce, encryptedData} = await encryptedWithCustomNonce(publicKey, data)
         setBenalohChallengeNonce(nonce)
         setEncryptedBallot(encryptedData)
+        setIsChallengeCheating(false)
+    }
+    const cheatingBenalohChallenge = async (publicKey:string, data:string) =>{
+        let cheatingOption = '9999'
+        const { nonce, encryptedData} = await encryptedWithCustomNonce(publicKey, cheatingOption)
+        setBenalohChallengeNonce(nonce)
+        setEncryptedBallot(encryptedData)
+        setIsChallengeCheating(true)
     }
     const CaseVote = async() =>{
         try {
@@ -499,10 +508,11 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
                             <div style={{borderStyle:"solid"}}>
                                 <div style={{margin:20}}>
                                     <h2>Step 2. (optional) Verify the Case as intented by benaloh Challenge</h2>
-                                    <button onClick={()=>benalohChallenge(voteDetail.publicKey, String(selectedOption.id))}>Start Challenge</button>
+                                    <button onClick={()=>benalohChallenge(voteDetail.publicKey, String(selectedOption.id))}>Generate Honest Challenge</button>
+                                    <button onClick={()=>cheatingBenalohChallenge(voteDetail.publicKey, String(selectedOption.id))}>Generate Cheating Challenge</button>
                                     <p>ballot:{encryptedBallot}</p>
                                     <p>Nonce: {benalohChallengeNonce}</p>
-                                    <p>Challenge QR</p>
+                                    <p>{isChallengeCheating ? "Cheating Challenge QR" : "Normal Challenge QR"}</p>
                                     <QRCode 
                                         value={ConvertKeyNonceDataToQRMessage(voteDetail.publicKey, benalohChallengeNonce, String(selectedOption.id),encryptedBallot)} 
                                         size={512}

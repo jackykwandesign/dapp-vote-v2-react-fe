@@ -48,7 +48,10 @@ const VerifyVote = () =>{
           />
           :
           <button onClick={()=>{
+            setBenalohChallengeNonce("")
+            setPublicKey("")
             setChallenge("")
+            setBenalohChallengeResult("")
             setStartScanStep1(true)
           }}>Start Scan key</button>
         }
