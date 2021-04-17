@@ -36,7 +36,8 @@ const Header = () =>{
             <br />
             <Link to="/myContractVotes" style={{marginRight:100}}>My Organized Voting</Link>
             <Link to="/organizeNewVote" style={{marginRight:100}}>Organize New Voting</Link>
-            <Link to="/voteDetail">Vote Detail</Link>
+            <Link to="/voteDetail"  style={{marginRight:100}}>Vote Detail</Link>
+            <Link to="/verifyVote">Verify Vote</Link>
             </div>
 
         </header>

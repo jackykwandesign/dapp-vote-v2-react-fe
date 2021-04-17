@@ -11,13 +11,78 @@ import { ElectionV2Contract, ElectionV2Instance } from '../../truffle-contracts'
 import { Vote, VoteOption, VoteTicket } from '../myVotes';
 import { CSVLink, CSVDownload } from "react-csv"
 import "./index.css"
-const NodeRSA = require('node-rsa');
+import NodeRSA, { AdvancedEncryptionSchemePKCS1 } from 'node-rsa';
+import { RSA_NO_PADDING } from "constants"
 var contract = require("@truffle/contract");
 var QRCode = require('qrcode.react');
+const saltedMd5 = require('salted-md5');
+var crypto = require("crypto");
 // var CsvDownload = require('react-json-to-csv')
 // import * as CsvDownload from 'react-json-to-csv'
 
+export const ConvertKeyNonceDataToQRMessage = (publicKey:string, nonce:string, voteOption:string, encryptedBallot:string) =>{
+    return `${publicKey}|${nonce}|${voteOption}|${encryptedBallot}`
+}
+export const GetKeyNonceDataFromQRMessage = (msg:string) =>{
+    let defaultData = {
+        publicKey:"",
+        nonce:"",
+        voteOption:"",
+        encryptedBallot:""
+    }
+    console.log("msg",msg)
+    const datas = msg.split("|")
+    if(datas.length !== 4){
+        alert("QR msg data error, length != 4")
+        return defaultData
+    }else{
+        defaultData.publicKey = datas[0]
+        defaultData.nonce = datas[1]
+        defaultData.voteOption = datas[2]
+        defaultData.encryptedBallot = datas[3]
+        return defaultData
+    }
+}
+export const CustomPaddingRSAEncrypted = async(publicKey:string, nonce:string, data:string) =>{
+    const pKey = new NodeRSA();
+    pKey.importKey(publicKey, 'public');
+    let scheme:AdvancedEncryptionSchemePKCS1 = {
+        scheme:"pkcs1",
+        padding:RSA_NO_PADDING,
+    }
+    pKey.setOptions({environment:"browser", encryptionScheme:scheme});
+    let dataWithCustomPadding = `${nonce}-${data}`
+    let encryptedData = pKey.encrypt(dataWithCustomPadding, 'base64') as unknown as string
+    console.log("dataWithCustomPadding",dataWithCustomPadding)
+    console.log("encryptedData", encryptedData)
+    console.log("nonce", nonce)
+    return {
+        nonce,
+        encryptedData
+    }
+}
+export const CustomPaddingRSADecrypted = async(privateKey:string, dataToDecrypted:string) =>{
+    let defaultData = {
+        dataToDecrypted:"",
+        decryptedData:"",
+    }
+    const pKey = new NodeRSA();
+    let scheme:AdvancedEncryptionSchemePKCS1 = {
+        scheme:"pkcs1",
+        padding:RSA_NO_PADDING,
+    }
+    pKey.setOptions({environment:"browser", encryptionScheme:scheme});
 
+    pKey.importKey(privateKey, 'private');
+
+
+    let decryptedData = pKey.decrypt(dataToDecrypted,'ascii') as unknown as string
+    console.log("dataToDecrypted", dataToDecrypted)
+    console.log("decryptedData", decryptedData)
+    defaultData.dataToDecrypted = dataToDecrypted
+    defaultData.decryptedData = decryptedData
+    return defaultData
+}
 const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
     const voteID = props.match.params.voteID
     const { account } = useMetaMask();
@@ -27,6 +92,7 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
     const [signature, setSignature] = useState<string>("")
     const [privateKey, setPrivateKey] = useState<string>("")
     const [encryptedBallot, setEncryptedBallot] = useState<string>("")
+    const [benalohChallengeNonce, setBenalohChallengeNonce] = useState<string>("")
     const [voted, setVoted] = useState<boolean>(false)
     const [receipt, setReceipt] = useState<Truffle.TransactionResponse<never>>()
     // const [selectedCandidate, setSelectedCandidate] = useState<Candidate>()
@@ -69,7 +135,7 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
         }
     }
 
-    const HandleSelectOption = (e: React.ChangeEvent<HTMLSelectElement>) =>{
+    const HandleSelectOption = async (e: React.ChangeEvent<HTMLSelectElement>) =>{
         if(voteDetail === undefined)return alert('voteDetail not loaded.')
 
         const targetID = e.currentTarget.value as unknown as number
@@ -77,13 +143,22 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
         if(found){
             setSelectedOption(found)
             const publicKeyInContract = voteDetail.publicKey
-            const pKey = new NodeRSA();
-            pKey.importKey(publicKeyInContract, 'public');
-            let encryptBallot = pKey.encrypt(found.id,'base64')
-            setEncryptedBallot(encryptBallot)
+            benalohChallenge(publicKeyInContract, String(found.id))
         }
     }
-
+    const encryptedWithCustomNonce = async (publicKey:string, data:string) => {
+        const customNonce = randomString(128)
+        const { nonce, encryptedData} = await CustomPaddingRSAEncrypted(publicKey, customNonce, data)
+        return {
+            nonce,
+            encryptedData
+        }
+    }
+    const benalohChallenge = async (publicKey:string, data:string) =>{
+        const { nonce, encryptedData} = await encryptedWithCustomNonce(publicKey, data)
+        setBenalohChallengeNonce(nonce)
+        setEncryptedBallot(encryptedData)
+    }
     const CaseVote = async() =>{
         try {
             if(!electionInstance)return alert('Contract not connected.')
@@ -104,27 +179,52 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
             alert(`Case Vote failed, reason ${error}`)
         }
     }
+    var randomString = function(length:number) {
+        var text = "";
+        var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        for(var i = 0; i < length; i++) {
+            text += possible.charAt(Math.floor(Math.random() * possible.length));
+        }
+        return text;
+    }
 
-    const VerifyPrivateKey = () =>{
+    const VerifyPrivateKey = async () =>{
         try {
             if(voteDetail === undefined)return alert('voteDetail not defined')
             let ballot = 1
+            let ballotInStr = String(ballot)
             const publicKeyInContract = voteDetail.publicKey
-            const pKey = new NodeRSA();
-            pKey.importKey(publicKeyInContract, 'public');
-            let encryptBallot = pKey.encrypt(ballot,'base64')
-    
-            const privateKeyProvideByOrganizer = new NodeRSA();
-            privateKeyProvideByOrganizer.importKey(privateKey,'private')
-            let decryptOption = privateKeyProvideByOrganizer.decrypt(encryptBallot,'json')
-            if(decryptOption === ballot)return window.confirm('Private key verify OK')
-            return alert(`VerifyPrivateKey decryptOption ${decryptOption} not equal ballot input ${ballot}`)
+            // const customNonce = randomString()
+            console.log("privateKey",privateKey)
+            const { encryptedData, nonce} = await encryptedWithCustomNonce(publicKeyInContract, ballotInStr)
+            const ballotRaw = await GetDecryptedBallot(privateKey, encryptedData)
+            if(ballotRaw === ballot){
+                return window.confirm('Private key verify OK')
+            }else{
+                return alert(`ballotFromEncryptedData ${ballotRaw} not equal ballot input ${ballot}`)
+            }
         } catch (error) {
             alert(`VerifyPrivateKey error ${error}`)
             return false
         }
     }
 
+    const GetDecryptedBallot = async(privateKey:string, encryptedData:string) =>{
+        const { dataToDecrypted, decryptedData} = await CustomPaddingRSADecrypted(privateKey, encryptedData)
+        let dataWithNonce = decryptedData.split("-")
+        if(dataWithNonce.length !== 2){
+            // alert("decryptedData format error, trash ballot found")
+            console.error("decryptedData format error, trash ballot found")
+            return -1
+        }
+        let ballotFromEncryptedData = dataWithNonce[1]
+        let ballotRaw = Number(ballotFromEncryptedData)
+        if(ballotRaw === 0){
+            console.error("decryptedData format error, trash ballot found")
+            return -1
+        }
+        return ballotRaw
+    }
     const EndVoteByPrivateKey = async () =>{
         try {
             if(electionInstance === undefined)return alert('electionInstance not defined')
@@ -132,22 +232,23 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
             if(voteDetail.voteTickets.length === 0 || voteDetail.voteTickets === undefined)return alert('Vote tickets not found')
             if(account === null)return alert('Account not ready.')
 
-            const privateKeyProvideByOrganizer = new NodeRSA();
-            privateKeyProvideByOrganizer.importKey(privateKey,'private')
-
             let ticketCount = new Array(Number(voteDetail.voteOptionCount)).fill(0);
-            voteDetail.voteTickets.map(t=>{
+
+            for(let i = 0; i < Number(voteDetail.totalVoteCount); i++) {
+                let t = voteDetail.voteTickets[i]
                 try {
-                    let ballot = privateKeyProvideByOrganizer.decrypt(t.encryptedBallot,'json')
-                    console.log("ballot",ballot)
-                    if(ballot > 0 && ballot <= Number(voteDetail.voteOptionCount)){
-                        ticketCount[ballot - 1] ++;
-                        // console.log("ballot",ballot)
+                    const numberBallot = await GetDecryptedBallot(privateKey, t.encryptedBallot)
+                    console.log("numberBallot",numberBallot)
+                    if(numberBallot > 0 && numberBallot <= Number(voteDetail.voteOptionCount)){
+                        ticketCount[numberBallot - 1] ++;
                     }
                 } catch (error) {
                     
                 }
-            })
+            }
+            // voteDetail.voteTickets.map(async t=>{
+
+            // })
             window.confirm(`This is the result ${ticketCount}`)
 
             let maxID = 0
@@ -343,16 +444,15 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
                 <VoteTicketList />
                 <br/>
                 {
-                    voteDetail.voteEnd ? <VoteResultList /> :
-
-                    <>
-                        <h2>To end the vote, paste your private key in here or upload your result if you need to verify the signature</h2>
-                        <textarea rows={20} cols={100} placeholder={"please paste your private key here"} onChange={e=>setPrivateKey(e.currentTarget.value)}/>
-                        <br />
-                        <button onClick={()=>VerifyPrivateKey()}>Verify Private Key</button>
-                        <button onClick={()=>EndVoteByPrivateKey()}>End Vote with Private Key</button>
-                    </>
+                    voteDetail.voteEnd && <VoteResultList /> 
                 }
+                <>
+                    <h2>To end the vote, paste your private key in here or upload your result if you need to verify the signature</h2>
+                    <textarea rows={20} cols={100} placeholder={"please paste your private key here"} onChange={e=>setPrivateKey(e.currentTarget.value)}/>
+                    <br />
+                    <button onClick={()=>VerifyPrivateKey()}>Verify Private Key</button>
+                    <button onClick={()=>EndVoteByPrivateKey()}>End Vote with Private Key</button>
+                </>
             </div>
         )
     }else{
@@ -398,15 +498,21 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
                             selectedOption !== undefined &&
                             <div style={{borderStyle:"solid"}}>
                                 <div style={{margin:20}}>
-                                    <h2>Step 2. (optioinal) Verify the Encrypted Ballot</h2>
-                                    <p>Encrypted Ballot</p><QRCode value={encryptedBallot} />
-                                    <p>{encryptedBallot}</p>
+                                    <h2>Step 2. (optional) Verify the Case as intented by benaloh Challenge</h2>
+                                    <button onClick={()=>benalohChallenge(voteDetail.publicKey, String(selectedOption.id))}>Start Challenge</button>
+                                    <p>ballot:{encryptedBallot}</p>
+                                    <p>Nonce: {benalohChallengeNonce}</p>
+                                    <p>Challenge QR</p>
+                                    <QRCode 
+                                        value={ConvertKeyNonceDataToQRMessage(voteDetail.publicKey, benalohChallengeNonce, String(selectedOption.id),encryptedBallot)} 
+                                        size={512}
+                                        renderAs={"svg"}
+                                    />
+                                    {/* <p>{encryptedBallot}</p> */}
                                     <p>To verify the ballot is case as intented</p>
                                     <p>1. Go to verify tap in your mobile</p>
-                                    <p>2. Scan the public key</p>
-                                    <p>3. Input your optionID, e.g. Number next to options</p>
-                                    <p>4. Scan the Encrypted Ballot</p>
-                                    <p>5. If OK pop up, you case as intented, else the voting website is cheating!</p>
+                                    <p>2. Scan the Challenge QR</p>
+                                    <p>3. If OK pop up, you case as intented, else the voting website is cheating!</p>
                                 </div>
                             </div>
                         }
