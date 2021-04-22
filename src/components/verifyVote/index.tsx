@@ -37,7 +37,7 @@ const VerifyVote = () =>{
                   setChallenge(encryptedBallot)
                   setBenalohChallengeResult(encryptedData)
                   if(encryptedData === encryptedBallot){
-                    alert('OK')
+                    alert(`OK, you choose option # ${voteOption}`)
                   }else{
                     alert('Cheating!!!')
                   }

@@ -498,7 +498,7 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
                                                 key={Number(v.id)}
                                             
                                             >
-                                                {v.name}
+                                            #{vi + 1} {v.name}
                                             </option>
                                         )
                                     })
