@@ -339,6 +339,13 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
                 <p>Allow Vote: {voteDetail.voteEnd ? "Expired" : "Allow"}</p>
                 <p>Public Key: </p><QRCode value={voteDetail.publicKey} />
                 <p>{voteDetail.publicKey}</p>
+                {
+                    voteDetail.voteEnd  &&
+                    <>
+                    <p>Private Key: </p><QRCode value={voteDetail.privateKey} />
+                    <p>{voteDetail.privateKey}</p>
+                    </>
+                }
                 <p>Total Vote Options: {Number(voteDetail.voteOptionCount)}</p>
                 <p> Vote Options: </p>
                 <ol>
@@ -360,21 +367,6 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
         return(
             <div>
                 <h2>Vote Tickets
-                    (
-                        <CSVLink 
-                            data={ voteDetail.voteTickets}
-                            filename={`vote_${voteID}_tickets.csv`}
-                            // headers = {
-                            //     [
-                            //         { label: 'id', key: 'id' },
-                            //         { label: 'encryptedBallot', key: 'encryptedBallot' },
-                            //         { label: 'signature', key: 'signature' },
-                            //     ]
-                            // }
-                        >
-                            Download CSV
-                        </CSVLink>
-                    )
                 </h2>
                 <table>
                     <thead>
@@ -416,6 +408,21 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
         return(
             <div>
                 <h2>Vote Result</h2>
+                (
+                        <CSVLink 
+                            data={ voteDetail.voteTickets}
+                            filename={`vote_${voteID}_tickets.csv`}
+                            // headers = {
+                            //     [
+                            //         { label: 'id', key: 'id' },
+                            //         { label: 'encryptedBallot', key: 'encryptedBallot' },
+                            //         { label: 'signature', key: 'signature' },
+                            //     ]
+                            // }
+                        >
+                            Download Raw Ticket CSV
+                        </CSVLink>
+                    )
                 <table>
                     <thead>
                         <tr>
@@ -508,8 +515,13 @@ const VoteDetail = (props: { match: { params: { voteID: any; }; }; }) =>{
                             <div style={{borderStyle:"solid"}}>
                                 <div style={{margin:20}}>
                                     <h2>Step 2. (optional) Verify the Case as intented by benaloh Challenge</h2>
-                                    <button onClick={()=>benalohChallenge(voteDetail.publicKey, String(selectedOption.id))}>Generate Honest Challenge</button>
-                                    <button onClick={()=>cheatingBenalohChallenge(voteDetail.publicKey, String(selectedOption.id))}>Generate Cheating Challenge</button>
+                                    <button 
+                                        onClick={()=>benalohChallenge(voteDetail.publicKey, String(selectedOption.id))}
+                                        style={{marginRight:20}}
+                                    >Generate Honest Challenge</button>
+                                    <button 
+                                        onClick={()=>cheatingBenalohChallenge(voteDetail.publicKey, String(selectedOption.id))}
+                                    >Generate Cheating Challenge</button>
                                     <p>ballot:{encryptedBallot}</p>
                                     <p>Nonce: {benalohChallengeNonce}</p>
                                     <p>{isChallengeCheating ? "Cheating Challenge QR" : "Normal Challenge QR"}</p>
